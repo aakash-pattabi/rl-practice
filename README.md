@@ -8,7 +8,9 @@ In order:
 
 * [ ] [Temporal difference learning (Sutton 1998)](https://link.springer.com/content/pdf/10.1007/BF00115009.pdf)
 
-  1. _Temporal difference_ learning differs from supervised learning in that updates can be made to the parameters of the learned model before the final outcome is known. That is, when predicting _z_ from _t, t+1, t+2,..._, the learner can update between _t_ and _t+1_ without knowing the true label _z_. Thus, the update rule **cannot** be applied incrementally.
+  1. _Temporal difference_ learning differs from supervised learning in that updates can be made to the parameters of the learned model before the final outcome is known. That is, when predicting _z_ from _t, t+1, t+2,..._, the learner can update between _t_ and _t+1_ without knowing the true label _z_. Thus, the update rule **can** be applied incrementally, as opposed to the supervised learning setting in which it **cannot**.
+
+  <a href="https://www.codecogs.com/eqnedit.php?latex=\huge&space;w&space;\gets&space;w&space;&plus;&space;\alpha\sum_{t&space;=&space;1}^m&space;(\hat{z}_{t&plus;1}&space;-&space;\hat{z}_t)&space;\sum_{i&space;=&space;1}^t&space;\nabla_w&space;\hat{z}_t" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\huge&space;w&space;\gets&space;w&space;&plus;&space;\alpha\sum_{t&space;=&space;1}^m&space;(\hat{z}_{t&plus;1}&space;-&space;\hat{z}_t)&space;\sum_{i&space;=&space;1}^t&space;\nabla_w&space;\hat{z}_t" title="\huge w \gets w + \alpha\sum_{t = 1}^m (\hat{z}_{t+1} - \hat{z}_t) \sum_{i = 1}^t \nabla_w \hat{z}_t" /></a>
 
   2. 
 
