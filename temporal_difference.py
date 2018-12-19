@@ -48,6 +48,7 @@ class TemporalDifferenceLearner(object):
 		self.predictor = SimplePredictor(input_dim, output_dim, n_hidden_neurons, activation)
 
 	def update(self, state, next_state):
+		pass
 
 ############################################################################################
 
