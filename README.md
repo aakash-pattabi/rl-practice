@@ -10,6 +10,8 @@ In order:
 
   1. _Temporal difference_ learning differs from supervised learning in that updates can be made to the parameters of the learned model before the final outcome is known. That is, when predicting _z_ from _t, t+1, t+2,..._, the learner can update between _t_ and _t+1_ without knowing the true label _z_. Thus, the update rule **cannot** be applied incrementally.
 
+  2. 
+
 * [ ] [Q-learning (Watkins and Dayan 1992)](https://link.springer.com/content/pdf/10.1007/BF00992698.pdf)
 
 * [ ] [REINFORCE algorithm (Williams 1992)](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.129.8871&rep=rep1&type=pdf)
