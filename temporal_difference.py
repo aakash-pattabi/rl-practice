@@ -15,10 +15,8 @@ import torch.optim as optim
 ## as interaction b/w temporal difference methods and deep learning
 ############################################################################################
 
-class Predictor(nn.Module):
-	def __init__(self, 
-				 input_dim, output_dim, n_hidden_neurons, 
-				 activation):
+class SimplePredictor(nn.Module):
+	def __init__(self, input_dim, output_dim, n_hidden_neurons, activation):
 
 		super().__init__()
 		assert(activation in ["relu", "sigmoid", "softmax", "linear"])
@@ -40,14 +38,16 @@ class Predictor(nn.Module):
 		if self.activation is not None:
 			x = self.activation(x)
 
+		return x
+
 class TemporalDifferenceLearner(object):
-	def __init__(self, exp = 1, lr = 0.01, 
-				 input_dim, output_dim, n_hidden_neurons, activation):
+	def __init__(self, exp, lr, discount, input_dim, output_dim, n_hidden_neurons, activation):
 		self.exp = exp
 		self.learning_rate = lr
-		self.predictor = Predictor(input_dim, output_dim, n_hidden_neurons, activation)
+		self.discount_rate = discount
+		self.predictor = SimplePredictor(input_dim, output_dim, n_hidden_neurons, activation)
 
-	def update(self, guess, next_guess):
+	def update(self, state, next_state):
 
 ############################################################################################
 
