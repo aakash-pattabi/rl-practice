@@ -9,6 +9,38 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 ############################################################################################
+## In theory, this simple tabular network with one hidden layer and frozen weights in the
+## input layer should yield the exact same policy (on average) as a tabular SARSA or 
+## Q-learning method... 
+############################################################################################
+
+class TabularPredictor(nn.Module):
+	def __init__(self, n_actions, n_states, output_dim):
+		super().__init__()
+
+		self.input = nn.Linear(n_actions + n_states, n_actions * n_states, bias = False)
+
+		actions = np.eye(n_actions)
+		states = np.eye(n_states)
+		input_params = np.vstack((np.tile(actions, len(states)), np.tile(states, len(actions))))
+		input_params = torch.from_numpy(input_params.T)
+		self.input.weight = torch.nn.Parameter(input_params, requires_grad = False)
+
+		self.hidden = nn.Linear(n_actions * n_states, output_dim, bias = False)
+		self.double()
+
+	def forward(self, x):
+		x = self.input(x)
+		x = self.hidden(x)
+		return(x)
+
+	def encode_one_hot(self, on, length):
+		one_hot = np.zeros(length)
+		one_hot[on] = 1
+		one_hot = torch.from_numpy(one_hot)
+		return one_hot
+
+############################################################################################
 ## Use an arbitrary neural network (can be quite simple, as in a multilayer perceptron)
 ## to take advantage of automatic gradient calculation when calculating the temporal 
 ## difference weight updates
@@ -34,27 +66,29 @@ class SimplePredictor(nn.Module):
 
 	def forward(self, x):
 		x = self.input(x)
+		x = F.relu(x)
 		x = self.hidden(x)
-
 		if self.activation is not None:
 			x = self.activation(x)
-
 		return x
 
+'''
+Argument 'predictor' is a Torch neural network, so the 'forward' function is 
+defined. 
+
+#TODO: Put an assert in or something...
+'''
 class TemporalDifferenceLearner(object):
-	def __init__(self, exp, lr, discount, epsilon, epsilon_decay,
-		input_dim, output_dim, n_hidden_neurons, activation):
+	def __init__(self, exp, lr, discount, epsilon, epsilon_decay, predictor):
 
 		self.exp = exp
 		self.learning_rate = lr
 		self.discount_rate = discount
 		self.epsilon = epsilon
 		self.epsilon_decay = epsilon_decay
-		self.predictor = SimplePredictor(input_dim, output_dim, n_hidden_neurons, activation)
+		self.predictor = predictor
 
-	def epsilon_greedy_action(self, env):
-		if np.random.rand() < self.epsilon:
-			return (env.action_space.sample())
+	def greedy_action(self, env):
 		n_actions = env.action_space.n
 		state = env.env.s
 		values = []
@@ -63,6 +97,11 @@ class TemporalDifferenceLearner(object):
 			q = self.predictor.forward(s_a)
 			values.append(q)
 		return np.argmax(values)
+
+	def epsilon_greedy_action(self, env):
+		if np.random.rand() < self.epsilon:
+			return (env.action_space.sample())
+		return self.greedy_action(env)
 
 	def anneal_epsilon(self):
 		self.epsilon *= self.epsilon_decay
@@ -73,7 +112,7 @@ class TemporalDifferenceLearner(object):
 		values = []
 		for action in range(n_actions):
 			s_a = torch.from_numpy(np.append(state, action)).double()
-			q = self.predictor.forward(s_a)
+			q = self.predictor.forward(s_a).detach().numpy()
 			values.append(q)
 		values = np.array(values)
 		values -= np.max(values)
@@ -82,11 +121,10 @@ class TemporalDifferenceLearner(object):
 		return np.min(np.where(cum_probs > np.random.rand()))
 
 class SARSALearner(TemporalDifferenceLearner):
-	def __init__(self, exp, lr, discount, epsilon, epsilon_decay,
-		input_dim, output_dim, n_hidden_neurons, activation):
+	def __init__(self, exp, lr, discount, epsilon, epsilon_decay, predictor):
 
 		TemporalDifferenceLearner.__init__(self, exp, lr, discount, epsilon, epsilon_decay, 
-			input_dim, output_dim, n_hidden_neurons, activation)
+			predictor)
 
 	def update_parameters(self, s, a, r, sp, ap):
 		## See pg. 10 in Geist and Pietquin (2010)
@@ -101,7 +139,8 @@ class SARSALearner(TemporalDifferenceLearner):
 		td_error = r + self.discount_rate * (Qsp_ap) - Qs_a
 
 		for param in self.predictor.parameters():
-			param = param + self.learning_rate * param.grad * td_error
+			if param.requires_grad:
+				param = param + self.learning_rate * param.grad * td_error
 
 ############################################################################################
 
@@ -116,13 +155,13 @@ def main():
 	env.reset()
 	s = env.env.s
 
-	learner = SARSALearner(exp = 0, lr = 0.01, discount = 0.99, epsilon = 1, epsilon_decay = 0.9, 
-		input_dim = 2, output_dim = 1, n_hidden_neurons = 2, activation = "linear")
+	learner = SARSALearner(exp = 0, lr = 0.01, discount = 0.95, epsilon = 1, epsilon_decay = 0.99, 
+		input_dim = 2, output_dim = 1, n_hidden_neurons = 100, activation = "relu")
 
 	a = learner.epsilon_greedy_action(env)
 
 	try:
-		while EPISODES < 200:
+		while EPISODES < 1000:
 			sp, r, done, info = env.step(a)
 			ap = learner.epsilon_greedy_action(env)
 			learner.update_parameters(s, a, r, sp, ap)
@@ -160,5 +199,28 @@ def main():
 	plt.ylabel("Episode length")
 	plt.savefig("SARSA_EpisodeLength_v0.png")
 
+	'''
+	## Play game to visualize results of learner
+	env.reset()
+	while True: 
+		a = learner.greedy_action(env)
+		env.render()
+		sp, r, done, info = env.step(a)
+		if done: 
+			break
+	'''
+
 if __name__ == "__main__":
-	main()
+	# main()
+
+	net = TabularPredictor(3, 2, 1)
+
+	for param in net.parameters():
+		print(param)
+
+	x = torch.zeros(5).double()
+	x[1], x[4] = 1, 1
+	print(x)
+
+	out = net.forward(x)
+	print(out)
