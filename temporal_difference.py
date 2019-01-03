@@ -8,6 +8,14 @@ import torch.optim as optim
 
 import matplotlib.pyplot as plt
 
+def row_cartesian_product(A, B):
+	m1, n1 = A.shape
+	m2, n2 = B.shape 
+	out = np.zeros((m1, m2, n1+n2))
+	out[:,:,:n1] = A[:,None,:]
+	out[:,:,n1:] = B
+	return out.reshape(m1*m2, -1)
+
 ############################################################################################
 ## In theory, this simple tabular network with one hidden layer and frozen weights in the
 ## input layer should yield the exact same policy (on average) as a tabular SARSA or 
@@ -24,8 +32,7 @@ class TabularPredictor(nn.Module):
 			requires_grad = False)
 		actions = np.eye(n_actions)
 		states = np.eye(n_states)
-		input_params = np.vstack((np.tile(actions, len(states)), np.tile(states, len(actions))))
-		input_params = torch.from_numpy(input_params.T)
+		input_params = torch.from_numpy(row_cartesian_product(actions, states))
 		self.input.weight = torch.nn.Parameter(input_params, requires_grad = False)
 
 		self.hidden = nn.Linear(n_actions * n_states, output_dim, bias = False)
@@ -155,7 +162,7 @@ class SARSALearner(TemporalDifferenceLearner):
 
 ############################################################################################
 
-def main():
+def main(max_episodes = 10000):
 	REWARD = 0
 	EPISODES = 0
 	STEPS_IN_EPISODE = 0
@@ -173,7 +180,7 @@ def main():
 	a = learner.epsilon_greedy_action(env)
 
 	try:
-		while EPISODES < 10000:
+		while EPISODES < max_episodes:
 			sp, r, done, info = env.step(a)
 			ap = learner.epsilon_greedy_action(env)
 			learner.update_parameters(s, a, r, sp, ap, env)
@@ -213,6 +220,9 @@ def main():
 
 	## Play game to visualize results of learner
 	env.reset()
+	print ("No. states: %d" % env.observation_space.n)
+	print ("No. actions: %d" % env.action_space.n)
+
 	while True: 
 		a = learner.greedy_action(env)
 		env.render()
