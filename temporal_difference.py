@@ -184,12 +184,21 @@ class QLearner(TemporalDifferenceLearner):
 
 ############################################################################################
 
-def main(max_episodes = 10000):
+def calculate_lake_score(ending_state, x_dim, y_dim, env):
+	goal = np.array([x_dim, y_dim])
+	all_states = np.array(range(env.observation_space.n))
+	all_states = all_states.reshape((x_dim, y_dim))
+	ending_state = np.argwhere(all_states == ending_state)[0]
+	# print(ending_state)
+	return np.linalg.norm(ending_state - goal)
+
+def main(max_episodes = 1000):
 	REWARD = 0
 	EPISODES = 0
 	STEPS_IN_EPISODE = 0
 	AVG_REWARD_PER_STEP = []
 	EPISODE_LENGTH = []
+	SCORES = []
 
 	env = gym.make("FrozenLake8x8-v0")
 	env.reset()
@@ -209,6 +218,7 @@ def main(max_episodes = 10000):
 
 			## Anneal epsilon at the end of every episode
 			if done:
+				SCORES.append(calculate_lake_score(sp, 8, 8, env))
 				env.reset()
 				learner.anneal_epsilon()
 				s = env.env.s
@@ -240,6 +250,13 @@ def main(max_episodes = 10000):
 	plt.ylabel("Episode length")
 	plt.savefig("SARSA_EpisodeLength_v0.png")
 
+	plt.clf()
+	plt.plot(range(EPISODES), SCORES)
+	plt.title("SARSA: Ending distance to goal (ATCF)")
+	plt.xlabel("Episode")
+	plt.ylabel("Euclidean distance to goal")
+	plt.savefig("SARSA_DistToGoal_v0.png")
+
 	## Play game to visualize results of learner
 	env.reset()
 	print ("No. states: %d" % env.observation_space.n)
@@ -249,6 +266,7 @@ def main(max_episodes = 10000):
 		a = learner.greedy_action(env)
 		env.render()
 		sp, r, done, info = env.step(a)
+		print(sp)
 		if done: 
 			break
 
